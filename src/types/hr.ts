@@ -67,6 +67,7 @@ export interface EmployeeRow {
   id_number: string | null
   role: { id: string; title: string; level: RoleLevel | null } | null
   department: { id: string; name: string } | null
+  site: { id: string; name: string } | null
   manager: { id: string; first_name: string; last_name: string } | null
   qualifications: QualificationSummary[]
 }

@@ -19,7 +19,8 @@ export async function getEmployees(organisationId: string): Promise<EmployeeRow[
       start_date, end_date, site_id, id_number,
       role:employee_roles(id, title, level),
       department:departments(id, name),
-      manager:employees!manager_id(id, first_name, last_name),
+      site:site_id(id, name),
+      manager:manager_id(id, first_name, last_name),
       qualifications:employee_qualifications(
         id, status, expiry_date, issue_date,
         qualification_type:qualification_types(id, name, category, is_mandatory)
@@ -48,7 +49,8 @@ export async function getEmployee(
       start_date, end_date, site_id, id_number,
       role:employee_roles(id, title, level),
       department:departments(id, name),
-      manager:employees!manager_id(id, first_name, last_name),
+      site:site_id(id, name),
+      manager:manager_id(id, first_name, last_name),
       qualifications:employee_qualifications(
         id, status, expiry_date, issue_date,
         qualification_type:qualification_types(id, name, category, is_mandatory)
@@ -71,6 +73,7 @@ function normaliseEmployee(raw: any): EmployeeRow {
   const department = Array.isArray(raw.department)
     ? raw.department[0] ?? null
     : raw.department ?? null
+  const site = Array.isArray(raw.site) ? raw.site[0] ?? null : raw.site ?? null
   const manager = Array.isArray(raw.manager) ? raw.manager[0] ?? null : raw.manager ?? null
   const qualifications: QualificationSummary[] = (
     Array.isArray(raw.qualifications) ? raw.qualifications : []
@@ -100,6 +103,7 @@ function normaliseEmployee(raw: any): EmployeeRow {
     id_number: raw.id_number,
     role,
     department,
+    site,
     manager,
     qualifications,
   }

@@ -1,6 +1,9 @@
-// Feature 2: Employee Profile Workspace — built in the next phase.
-import { ChevronLeft } from 'lucide-react'
-import Link from 'next/link'
+export const dynamic = 'force-dynamic'
+
+import { notFound } from 'next/navigation'
+import { getOrganisationId } from '@/lib/session'
+import { getEmployee, computeReadiness, computeCategoryIconStatuses } from '@/lib/db/employees'
+import { EmployeeProfile } from '@/features/employees/components/employee-profile'
 
 export default async function EmployeeProfilePage({
   params,
@@ -8,17 +11,21 @@ export default async function EmployeeProfilePage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const orgId = await getOrganisationId()
+  const employee = await getEmployee(orgId, id)
+
+  if (!employee) notFound()
+
+  const readiness = computeReadiness(employee)
+  const categoryStatuses = computeCategoryIconStatuses(employee)
+
   return (
-    <div className="px-8 py-10">
-      <Link
-        href="/hr/employees"
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-6"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Back to directory
-      </Link>
-      <p className="text-slate-400 text-sm font-mono">{id}</p>
-      <p className="text-slate-500 mt-2">Employee profile — Feature 2</p>
+    <div className="min-h-full bg-white">
+      <EmployeeProfile
+        employee={employee}
+        readiness={readiness}
+        categoryStatuses={categoryStatuses}
+      />
     </div>
   )
 }
