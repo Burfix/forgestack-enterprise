@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChevronLeft, Download, RefreshCw, CheckCircle2, Image as ImageIcon } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -16,12 +17,15 @@ interface WorkOrderDetailProps {
 }
 
 export function WorkOrderDetail({ workOrder }: WorkOrderDetailProps) {
+  const router = useRouter()
   const [status, setStatus] = useState<WorkOrderStatus>(workOrder.status)
   const [approvedAt, setApprovedAt] = useState<string | null>(workOrder.manager_approved_at)
 
   function handleStatusChange(newStatus: WorkOrderStatus, newApprovedAt: string) {
     setStatus(newStatus)
     setApprovedAt(newApprovedAt)
+    // Invalidate server cache after local state has updated
+    router.refresh()
   }
 
   const slaStatus = computeSlaStatus(workOrder.sla_due_at, status)
