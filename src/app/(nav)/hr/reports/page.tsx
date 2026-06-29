@@ -1,4 +1,4 @@
-import { FileBarChart } from 'lucide-react'
+import { FileBarChart, Scale, TrendingUp, Download } from 'lucide-react'
 import { PlaceholderModule } from '@/components/placeholder-module'
 
 export default function HrReportsPage() {
@@ -6,12 +6,28 @@ export default function HrReportsPage() {
     <PlaceholderModule
       icon={FileBarChart}
       name="Reports"
-      description="Generate statutory, operational, and executive HR reports — from Employment Equity returns to technician readiness summaries."
-      widgets={[
-        { label: 'Reports generated this month', metric: '—', description: 'Across all report types' },
-        { label: 'EE report status', metric: '—', description: 'Employment Equity submission readiness' },
-        { label: 'Workforce analytics', metric: '—', description: 'Turnover, tenure, and productivity metrics' },
-        { label: 'Scheduled exports', metric: '—', description: 'Automated reports sent to stakeholders' },
+      description="Statutory, operational, and executive HR reports — Employment Equity returns, skills development levies, workforce analytics, and automated stakeholder exports."
+      features={[
+        {
+          icon: Scale,
+          title: 'Employment Equity reporting',
+          description: 'Generate EEA2 and EEA4 reports from live headcount data — workforce profile, income differentials, and numerical goals — ready for submission to the DoEL.',
+        },
+        {
+          icon: FileBarChart,
+          title: 'Skills Development Levy report',
+          description: 'Compile WSP and ATR submissions for SETA with training spend, beneficiary demographics, and programme outcomes drawn automatically from training records.',
+        },
+        {
+          icon: TrendingUp,
+          title: 'Workforce analytics',
+          description: 'Turnover rate, average tenure, vacancy fill time, and cost-per-hire — tracked by department and site to support quarterly board reporting.',
+        },
+        {
+          icon: Download,
+          title: 'Scheduled report exports',
+          description: 'Configure automated report delivery to HR managers, CFOs, or board members on a daily, weekly, or monthly schedule in PDF or Excel format.',
+        },
       ]}
     />
   )

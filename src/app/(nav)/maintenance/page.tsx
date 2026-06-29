@@ -1,4 +1,4 @@
-import { Wrench } from 'lucide-react'
+import { Wrench, CalendarRange, Package, History } from 'lucide-react'
 import { PlaceholderModule } from '@/components/placeholder-module'
 
 export default function MaintenancePage() {
@@ -6,12 +6,28 @@ export default function MaintenancePage() {
     <PlaceholderModule
       icon={Wrench}
       name="Maintenance"
-      description="Schedule and track preventive maintenance programmes across all assets, ensuring compliance with OEM and regulatory requirements."
-      widgets={[
-        { label: 'PM tasks due this week', metric: '—', description: 'Scheduled preventive maintenance visits' },
-        { label: 'Overdue tasks', metric: '—', description: 'Preventive maintenance past due date' },
-        { label: 'Asset health score', metric: '—', description: 'Weighted average across all tracked assets' },
-        { label: 'Mean time between failures', metric: '—', description: 'Rolling 12-month average per asset class' },
+      description="Structured management of planned and reactive maintenance — PPM programmes, breakdown logging, spares tracking, and full asset service history."
+      features={[
+        {
+          icon: CalendarRange,
+          title: 'PPM planner',
+          description: 'Build preventive maintenance programmes by site and asset class: define service frequencies, assign technicians, attach task checklists, and link required spares kits.',
+        },
+        {
+          icon: Wrench,
+          title: 'Breakdown log',
+          description: 'Structured reactive fault capture with equipment type, symptom code, root-cause analysis, and automatic repeat-failure detection across assets.',
+        },
+        {
+          icon: Package,
+          title: 'Spares & consumables tracker',
+          description: 'Link parts usage to job cards, maintain stock levels per depot or van, and trigger reorder alerts when quantities fall below defined minimums.',
+        },
+        {
+          icon: History,
+          title: 'Asset service history',
+          description: 'Complete chronological audit trail of every intervention on every asset — searchable by technician, fault code, cost centre, or date range.',
+        },
       ]}
     />
   )
