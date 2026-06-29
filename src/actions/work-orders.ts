@@ -1,6 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOrganisationId } from '@/lib/session'
 
@@ -47,9 +46,6 @@ export async function approveWorkOrder(
     entity_id: workOrderId,
     after_state: { status: 'manager_approved', approved_at: now },
   })
-
-  revalidatePath('/work-orders')
-  revalidatePath(`/work-orders/${workOrderId}`)
 
   return { success: true, approvedAt: now }
 }
