@@ -22,9 +22,9 @@ const STEPS: WorkflowStep[] = [
   { number: 3, title: 'On site',             subtitle: 'Technician marks arrival on PDA.',                                        source: 'Technisoft',  isForgeStack: false },
   { number: 4, title: 'Job completed',       subtitle: 'Technician completes work. Client signs on glass. Job card saved.',       source: 'Technisoft',  isForgeStack: false },
   { number: 5, title: 'Manager approval',    subtitle: 'Technical manager reviews job card in ForgeStack.',                       source: 'ForgeStack',  isForgeStack: true  },
-  { number: 6, title: 'Sent to accounts',    subtitle: 'Accounts team notified. Preview invoice generated.',                      source: 'ForgeStack',  isForgeStack: true  },
-  { number: 7, title: 'Tax invoice posted',  subtitle: 'Accounts posts tax invoice in ERP. Invoice number recorded.',             source: 'ERP',         isForgeStack: false },
-  { number: 8, title: 'Invoice sent',        subtitle: 'Automated email to client, accounts, and site manager.',                  source: 'ForgeStack',  isForgeStack: true  },
+  { number: 6, title: 'Sent to accounts',    subtitle: 'Helpdesk receives approval notification and forwards job pack to Accounts.', source: 'ForgeStack',  isForgeStack: true  },
+  { number: 7, title: 'Tax invoice posted',  subtitle: 'Accounts posts tax invoice in Sage Accpac. Invoice number recorded.',      source: 'Sage Accpac', isForgeStack: false },
+  { number: 8, title: 'Invoice sent',        subtitle: 'Accounts emails tax invoice and job card bundle to client.',               source: 'Sage Accpac', isForgeStack: false },
   { number: 9, title: 'Closed',              subtitle: 'Job closed. Client satisfaction prompt sent.',                            source: 'ForgeStack',  isForgeStack: true  },
 ]
 
@@ -34,8 +34,8 @@ function statusToStep(status: WorkOrderStatus): number {
     dispatched:                  2,
     on_site:                     3,
     completed_awaiting_approval: 5, // step 4 done, step 5 is active
-    manager_approved:            6,
-    sent_to_accounts:            6,
+    manager_approved:            6, // step 5 done, step 6 is active (Helpdesk forwarding to Accounts)
+    sent_to_accounts:            7, // step 6 done, step 7 is active (Accounts posting invoice)
     invoiced:                    8,
     closed:                      9,
   }
