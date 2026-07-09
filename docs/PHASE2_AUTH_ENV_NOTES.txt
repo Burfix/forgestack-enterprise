@@ -1,0 +1,16 @@
+Add to .env.local (and to Vercel → Project → Environment Variables for forgestack-enterprise):
+
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<the anon/publishable key for bwdobgvaaknynowdabol>
+
+You likely already have NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY set
+(the Phase 1 service-role client needed those). The anon key is the new addition —
+find it in Supabase Dashboard → Project Settings → API → Project API keys → "anon public".
+
+Do NOT remove APP_ORG_SLUG or SUPABASE_SERVICE_ROLE_KEY yet — keep them during the
+dual-mode rollout window described in the architecture doc, in case you need to
+roll back quickly.
+
+Magic-link email delivery: Supabase's default email provider works out of the box
+for testing, but has low rate limits. If magic links stop arriving during testing,
+check Supabase Dashboard → Authentication → Rate Limits, or configure a custom SMTP
+provider under Authentication → Emails.

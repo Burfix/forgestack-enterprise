@@ -9,9 +9,10 @@ import { TableSkeleton } from '@/features/employees/components/table-skeleton'
 
 async function EmployeeData() {
   const orgId = await getOrganisationId()
+  const supabase = await createServerSupabaseClient()
   const [employees, departmentsResult] = await Promise.all([
     getEmployees(orgId),
-    createServerSupabaseClient()
+    supabase
       .from('departments')
       .select('id, name')
       .eq('organisation_id', orgId)

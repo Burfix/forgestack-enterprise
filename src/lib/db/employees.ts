@@ -9,7 +9,7 @@ import type {
 } from '@/types/hr'
 
 export async function getEmployees(organisationId: string): Promise<EmployeeRow[]> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('employees')
     .select(`
@@ -39,7 +39,7 @@ export async function getEmployee(
   organisationId: string,
   employeeId: string
 ): Promise<EmployeeRow | null> {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('employees')
     .select(`
