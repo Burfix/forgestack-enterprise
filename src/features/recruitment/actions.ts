@@ -55,7 +55,10 @@ interface CreateVacancyInput {
   departmentId: string
   roleId: string | null
   positionTitle: string
-  priority: 'low' | 'normal' | 'high' | 'urgent'
+  priority: 'low' | 'normal' | 'high' | 'critical'
+  hireTypeId: string | null
+  contractTypeId: string | null
+  hiringManagerId: string | null
   targetStartDate: string | null
 }
 
@@ -68,7 +71,7 @@ export async function createVacancy(input: CreateVacancyInput): Promise<Transiti
     return { ok: false, message: 'Position title is required.' }
   }
   if (!input.siteId || !input.departmentId) {
-    return { ok: false, message: 'Site and department are required.' }
+    return { ok: false, message: 'Site (Portfolio/Business Unit) and Department are required.' }
   }
 
   const { error } = await supabase.from('vacancies').insert({
@@ -78,6 +81,9 @@ export async function createVacancy(input: CreateVacancyInput): Promise<Transiti
     role_id: input.roleId,
     position_title: input.positionTitle.trim(),
     priority: input.priority,
+    hire_type_id: input.hireTypeId,
+    contract_type_id: input.contractTypeId,
+    hiring_manager_id: input.hiringManagerId,
     target_start_date: input.targetStartDate,
     created_by: actorEmployeeId,
   })

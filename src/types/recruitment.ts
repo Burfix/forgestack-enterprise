@@ -2,7 +2,7 @@
 // Mirrors src/types/hr.ts conventions. Kept in sync with the
 // recruitment_command_centre_schema migration.
 
-export type VacancyPriority = 'low' | 'normal' | 'high' | 'urgent'
+export type VacancyPriority = 'low' | 'normal' | 'high' | 'critical'
 export type VacancyStatus = 'open' | 'on_hold' | 'filled' | 'cancelled'
 
 export type CandidateStatus = 'active' | 'withdrawn' | 'rejected' | 'employee_active'

@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState, useTransition } from 'react'
+import { Fragment, useMemo, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -12,13 +12,23 @@ import {
 } from '@/components/ui/select'
 import { createVacancy, createCandidate } from '@/features/recruitment/actions'
 import type { VacancyRow, VacancyPriority } from '@/types/recruitment'
-import type { SiteOption, DepartmentOption, EmployeeRoleOption } from '@/lib/db/reference-data'
+import type {
+  SiteOption,
+  DepartmentOption,
+  EmployeeRoleOption,
+  HiringManagerOption,
+  ContractTypeOption,
+  HireTypeOption,
+} from '@/lib/db/reference-data'
 
 interface Props {
   vacancies: VacancyRow[]
   sites: SiteOption[]
   departments: DepartmentOption[]
   roles: EmployeeRoleOption[]
+  hiringManagers: HiringManagerOption[]
+  contractTypes: ContractTypeOption[]
+  hireTypes: HireTypeOption[]
 }
 
 const STATUS_STYLE: Record<VacancyRow['status'], string> = {
@@ -28,7 +38,9 @@ const STATUS_STYLE: Record<VacancyRow['status'], string> = {
   cancelled: 'bg-slate-100 text-slate-400 ring-slate-200',
 }
 
-export function VacanciesPanel({ vacancies, sites, departments, roles }: Props) {
+const REGIONS = ['WC', 'KZN', 'GAU'] as const
+
+export function VacanciesPanel({ vacancies, sites, departments, roles, hiringManagers, contractTypes, hireTypes }: Props) {
   const [showNewVacancy, setShowNewVacancy] = useState(false)
   const [candidateFormFor, setCandidateFormFor] = useState<string | null>(null)
 
@@ -46,6 +58,9 @@ export function VacanciesPanel({ vacancies, sites, departments, roles }: Props) 
           sites={sites}
           departments={departments}
           roles={roles}
+          hiringManagers={hiringManagers}
+          contractTypes={contractTypes}
+          hireTypes={hireTypes}
           onDone={() => setShowNewVacancy(false)}
         />
       )}
@@ -112,20 +127,38 @@ function NewVacancyForm({
   sites,
   departments,
   roles,
+  hiringManagers,
+  contractTypes,
+  hireTypes,
   onDone,
 }: {
   sites: SiteOption[]
   departments: DepartmentOption[]
   roles: EmployeeRoleOption[]
+  hiringManagers: HiringManagerOption[]
+  contractTypes: ContractTypeOption[]
+  hireTypes: HireTypeOption[]
   onDone: () => void
 }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [positionTitle, setPositionTitle] = useState('')
-  const [siteId, setSiteId] = useState('')
   const [departmentId, setDepartmentId] = useState('')
+  const [region, setRegion] = useState('')
+  const [siteId, setSiteId] = useState('')
+  const [hireTypeId, setHireTypeId] = useState('')
+  const [contractTypeId, setContractTypeId] = useState('')
+  const [hiringManagerId, setHiringManagerId] = useState('')
   const [roleId, setRoleId] = useState('')
   const [priority, setPriority] = useState<VacancyPriority>('normal')
+
+  // Region narrows the Portfolio/Business Unit list; sites without a region
+  // tagged yet stay hidden until a region is picked, or shown regardless if
+  // "All regions" (no region selected).
+  const filteredSites = useMemo(
+    () => (region ? sites.filter((s) => s.region === region) : sites),
+    [sites, region]
+  )
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -137,6 +170,9 @@ function NewVacancyForm({
         roleId: roleId || null,
         positionTitle,
         priority,
+        hireTypeId: hireTypeId || null,
+        contractTypeId: contractTypeId || null,
+        hiringManagerId: hiringManagerId || null,
         targetStartDate: null,
       })
       if (!result.ok) {
@@ -157,16 +193,44 @@ function NewVacancyForm({
           required
           className="col-span-2 bg-white"
         />
-        <Select value={siteId} onValueChange={setSiteId}>
-          <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Site" /></SelectTrigger>
-          <SelectContent>
-            {sites.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={departmentId} onValueChange={setDepartmentId}>
           <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Department" /></SelectTrigger>
           <SelectContent>
             {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={region} onValueChange={(v) => { setRegion(v); setSiteId('') }}>
+          <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Region" /></SelectTrigger>
+          <SelectContent>
+            {REGIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-4 gap-3">
+        <Select value={hireTypeId} onValueChange={setHireTypeId}>
+          <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Hire type" /></SelectTrigger>
+          <SelectContent>
+            {hireTypes.map((h) => <SelectItem key={h.id} value={h.id}>{h.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={contractTypeId} onValueChange={setContractTypeId}>
+          <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Contract type" /></SelectTrigger>
+          <SelectContent>
+            {contractTypes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={siteId} onValueChange={setSiteId}>
+          <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Portfolio / Business unit" /></SelectTrigger>
+          <SelectContent>
+            {filteredSites.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={hiringManagerId} onValueChange={setHiringManagerId}>
+          <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Hiring manager" /></SelectTrigger>
+          <SelectContent>
+            {hiringManagers.map((m) => (
+              <SelectItem key={m.id} value={m.id}>{m.first_name} {m.last_name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -180,13 +244,15 @@ function NewVacancyForm({
         <Select value={priority} onValueChange={(v) => setPriority(v as VacancyPriority)}>
           <SelectTrigger className="w-full bg-white"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="low">Low priority</SelectItem>
-            <SelectItem value="normal">Normal priority</SelectItem>
-            <SelectItem value="high">High priority</SelectItem>
-            <SelectItem value="urgent">Urgent</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
           </SelectContent>
         </Select>
-        <Button type="submit" disabled={pending}>{pending ? 'Creating…' : 'Create vacancy'}</Button>
+        <div className="col-span-2 flex justify-end">
+          <Button type="submit" disabled={pending}>{pending ? 'Creating…' : 'Create vacancy'}</Button>
+        </div>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </form>
