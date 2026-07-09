@@ -134,3 +134,77 @@ export async function createCandidate(input: CreateCandidateInput): Promise<Tran
   revalidatePath('/hr/recruitment')
   return { ok: true }
 }
+
+interface UpdateStageDetailsInput {
+  workflowId: string
+  interviewDate?: string | null
+  interviewerId?: string | null
+  score?: number | null
+  recommendation?: 'proceed' | 'reject' | 'hold' | null
+  approvedBy?: string | null
+  approvalDate?: string | null
+  offerGeneratedDate?: string | null
+  offerAmount?: number | null
+  offerOwnerId?: string | null
+  offerVersion?: number | null
+  notes?: string | null
+}
+
+/** Saves the structured capture fields (interview score, approval sign-off, offer details) for the candidate's currently-open stage. */
+export async function updateWorkflowStageDetails(input: UpdateStageDetailsInput): Promise<TransitionResult> {
+  const supabase = await createServerSupabaseClient()
+
+  const { error } = await supabase.rpc('fs_update_workflow_stage_details', {
+    p_workflow_id: input.workflowId,
+    p_interview_date: input.interviewDate ?? null,
+    p_interviewer_id: input.interviewerId ?? null,
+    p_score: input.score ?? null,
+    p_recommendation: input.recommendation ?? null,
+    p_approved_by: input.approvedBy ?? null,
+    p_approval_date: input.approvalDate ?? null,
+    p_offer_generated_date: input.offerGeneratedDate ?? null,
+    p_offer_amount: input.offerAmount ?? null,
+    p_offer_owner_id: input.offerOwnerId ?? null,
+    p_offer_version: input.offerVersion ?? null,
+    p_notes: input.notes ?? null,
+  })
+
+  if (error) return { ok: false, message: error.message }
+
+  revalidatePath('/hr/recruitment')
+  return { ok: true }
+}
+
+/** Ticks or unticks a recruitment checklist item (annexure, signature, medical, etc.). */
+export async function completeRecruitmentTask(taskId: string, completed: boolean): Promise<TransitionResult> {
+  const supabase = await createServerSupabaseClient()
+  const { error } = await supabase.rpc('fs_complete_recruitment_task', {
+    p_task_id: taskId,
+    p_completed: completed,
+  })
+
+  if (error) return { ok: false, message: error.message }
+
+  revalidatePath('/hr/recruitment')
+  return { ok: true }
+}
+
+/** Marks a required onboarding document (ID, banking details, police clearance, etc.) as uploaded or not. */
+export async function markCandidateDocument(documentId: string, uploaded: boolean): Promise<TransitionResult> {
+  const supabase = await createServerSupabaseClient()
+  const { error } = await supabase.rpc('fs_mark_candidate_document', {
+    p_document_id: documentId,
+    p_uploaded: uploaded,
+  })
+
+  if (error) return { ok: false, message: error.message }
+
+  revalidatePath('/hr/recruitment')
+  return { ok: true }
+}
+
+/** Fetches the candidate's currently-open workflow stage detail (typed fields + checklist), for the detail panel. */
+export async function getCandidateStageDetail(candidateId: string) {
+  const { getWorkflowDetail } = await import('@/lib/db/workflow-detail')
+  return getWorkflowDetail(candidateId)
+}

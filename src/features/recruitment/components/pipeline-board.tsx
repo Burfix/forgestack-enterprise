@@ -3,8 +3,10 @@
 import { useState, useTransition } from 'react'
 import { EmployeeAvatar } from '@/features/employees/components/employee-avatar'
 import { transitionCandidateStage } from '@/features/recruitment/actions'
+import { CandidateStageDetail } from '@/features/recruitment/components/candidate-stage-detail'
 import type { CandidatePipelineRow, RecruitmentStage } from '@/types/recruitment'
 import { PIPELINE_COLUMNS, STAGE_COLUMN, STAGE_LABEL } from '@/types/recruitment'
+import type { HiringManagerOption } from '@/lib/db/reference-data'
 
 // Mirrors public.recruitment_stage_order — the DB is the source of truth for
 // legality; this is only used to label the button with the correct next
@@ -28,6 +30,18 @@ const STAGE_SEQUENCE: RecruitmentStage[] = [
   'employee_active',
 ]
 
+// Stages where the pipeline board itself should refuse to advance until the
+// stage's required capture fields are filled in — mirrors CAPTURE_FIELDS in
+// candidate-stage-detail.tsx. This is a UX guard, not the enforcement
+// boundary: the database doesn't know or care about these fields, so this
+// only prevents an operator from skipping past a stage without realising
+// they forgot to record the outcome.
+const REQUIRES_DETAILS: Partial<Record<RecruitmentStage, string>> = {
+  interview: 'Record a score and recommendation before advancing.',
+  head_approval: 'Record who approved this candidate before advancing.',
+  offer_of_employment: 'Record the offer amount before advancing.',
+}
+
 function nextStage(current: RecruitmentStage): RecruitmentStage | null {
   const idx = STAGE_SEQUENCE.indexOf(current)
   if (idx === -1 || idx === STAGE_SEQUENCE.length - 1) return null
@@ -36,12 +50,15 @@ function nextStage(current: RecruitmentStage): RecruitmentStage | null {
 
 interface Props {
   candidates: CandidatePipelineRow[]
+  hiringManagers: HiringManagerOption[]
 }
 
-export function PipelineBoard({ candidates }: Props) {
+export function PipelineBoard({ candidates, hiringManagers }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [pending, startTransition] = useTransition()
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [detailsSatisfied, setDetailsSatisfied] = useState<Record<string, boolean>>({})
 
   const byColumn = new Map<string, CandidatePipelineRow[]>()
   for (const col of PIPELINE_COLUMNS) byColumn.set(col, [])
@@ -54,6 +71,14 @@ export function PipelineBoard({ candidates }: Props) {
   function handleAdvance(candidateId: string, current: RecruitmentStage) {
     const target = nextStage(current)
     if (!target) return
+
+    const requirement = REQUIRES_DETAILS[current]
+    if (requirement && detailsSatisfied[candidateId] === false) {
+      setErrors((prev) => ({ ...prev, [candidateId]: requirement }))
+      setExpandedId(candidateId)
+      return
+    }
+
     setErrors((prev) => ({ ...prev, [candidateId]: '' }))
     startTransition(async () => {
       const result = await transitionCandidateStage(candidateId, target)
@@ -100,6 +125,7 @@ export function PipelineBoard({ candidates }: Props) {
                   const stage = c.activeWorkflow?.stage ?? 'interview'
                   const target = nextStage(stage)
                   const error = errors[c.id]
+                  const expanded = expandedId === c.id
                   return (
                     <div
                       key={c.id}
@@ -122,12 +148,19 @@ export function PipelineBoard({ candidates }: Props) {
                     >
                       <div className="flex items-center gap-2 mb-1.5">
                         <EmployeeAvatar firstName={c.first_name} lastName={c.surname} />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-slate-900 truncate">
                             {c.first_name} {c.surname}
                           </p>
                           <p className="text-[10px] text-slate-400 truncate">{STAGE_LABEL[stage]}</p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(expanded ? null : c.id)}
+                          className="text-[10px] text-slate-400 hover:text-slate-600 shrink-0"
+                        >
+                          {expanded ? 'Hide' : 'Details'}
+                        </button>
                       </div>
 
                       {target && (
@@ -143,6 +176,17 @@ export function PipelineBoard({ candidates }: Props) {
 
                       {error && (
                         <p className="mt-1.5 text-[10px] text-red-600 leading-snug">{error}</p>
+                      )}
+
+                      {expanded && (
+                        <CandidateStageDetail
+                          candidateId={c.id}
+                          stage={stage}
+                          hiringManagers={hiringManagers}
+                          onRequiredFieldsChange={(id, satisfied) =>
+                            setDetailsSatisfied((prev) => ({ ...prev, [id]: satisfied }))
+                          }
+                        />
                       )}
                     </div>
                   )
