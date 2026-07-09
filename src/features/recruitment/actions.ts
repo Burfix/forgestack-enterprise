@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getCurrentEmployeeId } from '@/lib/session'
+import { getCurrentEmployeeId, getOrganisationId } from '@/lib/session'
 import type { RecruitmentStage } from '@/types/recruitment'
 
 interface TransitionResult {
@@ -43,6 +43,85 @@ export async function transitionCandidateStage(
     // The database function raises plain-language exceptions
     // (e.g. "Contract can't be generated yet — ..."). Pass that straight
     // through rather than showing a Postgres error code.
+    return { ok: false, message: error.message }
+  }
+
+  revalidatePath('/hr/recruitment')
+  return { ok: true }
+}
+
+interface CreateVacancyInput {
+  siteId: string
+  departmentId: string
+  roleId: string | null
+  positionTitle: string
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  targetStartDate: string | null
+}
+
+export async function createVacancy(input: CreateVacancyInput): Promise<TransitionResult> {
+  const supabase = await createServerSupabaseClient()
+  const orgId = await getOrganisationId()
+  const actorEmployeeId = await getCurrentEmployeeId()
+
+  if (!input.positionTitle.trim()) {
+    return { ok: false, message: 'Position title is required.' }
+  }
+  if (!input.siteId || !input.departmentId) {
+    return { ok: false, message: 'Site and department are required.' }
+  }
+
+  const { error } = await supabase.from('vacancies').insert({
+    organisation_id: orgId,
+    site_id: input.siteId,
+    department_id: input.departmentId,
+    role_id: input.roleId,
+    position_title: input.positionTitle.trim(),
+    priority: input.priority,
+    target_start_date: input.targetStartDate,
+    created_by: actorEmployeeId,
+  })
+
+  if (error) {
+    // RLS denials surface as a generic Postgres permission error — translate
+    // it rather than showing the raw message, per the "never expose raw
+    // technical errors" convention.
+    if (error.code === '42501' || /row-level security/i.test(error.message)) {
+      return {
+        ok: false,
+        message: 'You don’t have permission to create vacancies. This requires the HR admin, manager, MD, or super admin role.',
+      }
+    }
+    return { ok: false, message: error.message }
+  }
+
+  revalidatePath('/hr/recruitment')
+  return { ok: true }
+}
+
+interface CreateCandidateInput {
+  vacancyId: string
+  firstName: string
+  surname: string
+  email: string | null
+  phone: string | null
+  source: string | null
+}
+
+export async function createCandidate(input: CreateCandidateInput): Promise<TransitionResult> {
+  const supabase = await createServerSupabaseClient()
+
+  const { error } = await supabase.rpc('fs_recruitment_create_candidate', {
+    p_vacancy_id: input.vacancyId,
+    p_first_name: input.firstName,
+    p_surname: input.surname,
+    p_email: input.email,
+    p_phone: input.phone,
+    p_source: input.source,
+  })
+
+  if (error) {
+    // fs_recruitment_create_candidate raises plain-language exceptions itself.
     return { ok: false, message: error.message }
   }
 

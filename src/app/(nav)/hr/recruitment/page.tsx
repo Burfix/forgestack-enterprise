@@ -3,15 +3,20 @@ export const dynamic = 'force-dynamic'
 import { Suspense } from 'react'
 import { getOrganisationId } from '@/lib/session'
 import { getVacancies, getCandidatePipeline, getAvgTimeToHireDays } from '@/lib/db/recruitment'
+import { getSites, getDepartments, getEmployeeRoles } from '@/lib/db/reference-data'
 import { RecruitmentOverview } from '@/features/recruitment/components/recruitment-overview'
 import { PipelineBoard } from '@/features/recruitment/components/pipeline-board'
+import { VacanciesPanel } from '@/features/recruitment/components/vacancies-panel'
 
 async function RecruitmentData() {
   const orgId = await getOrganisationId()
-  const [vacancies, candidates, avgTimeToHireDays] = await Promise.all([
+  const [vacancies, candidates, avgTimeToHireDays, sites, departments, roles] = await Promise.all([
     getVacancies(orgId),
     getCandidatePipeline(orgId),
     getAvgTimeToHireDays(orgId),
+    getSites(orgId),
+    getDepartments(orgId),
+    getEmployeeRoles(orgId),
   ])
 
   const openVacancies = vacancies.filter((v) => v.status === 'open').length
@@ -37,6 +42,7 @@ async function RecruitmentData() {
         atRisk={atRisk}
         vacancies={vacancies}
       />
+      <VacanciesPanel vacancies={vacancies} sites={sites} departments={departments} roles={roles} />
       <PipelineBoard candidates={candidates} />
     </div>
   )
@@ -50,6 +56,7 @@ function RecruitmentSkeleton() {
           <div key={i} className="bg-white rounded-xl border border-slate-200 h-28" />
         ))}
       </div>
+      <div className="bg-white rounded-xl border border-slate-200 h-64" />
       <div className="bg-white rounded-xl border border-slate-200 h-64" />
       <div className="bg-white rounded-xl border border-slate-200 h-80" />
     </div>
