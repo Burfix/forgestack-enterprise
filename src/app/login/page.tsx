@@ -14,7 +14,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function LoginPage() {
   const router = useRouter()
-  const supabase = createBrowserSupabaseClient()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,6 +27,7 @@ export default function LoginPage() {
     setLoading(true)
     setStatus({ kind: 'idle' })
 
+    const supabase = createBrowserSupabaseClient()
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     setLoading(false)
@@ -44,6 +44,7 @@ export default function LoginPage() {
     setLoading(true)
     setStatus({ kind: 'idle' })
 
+    const supabase = createBrowserSupabaseClient()
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
