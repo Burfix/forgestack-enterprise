@@ -65,7 +65,7 @@ async function RecruitmentData() {
         contractTypes={contractTypes}
         hireTypes={hireTypes}
       />
-      <PipelineBoard candidates={candidates} />
+      <PipelineBoard candidates={candidates} hiringManagers={hiringManagers} />
     </div>
   )
 }
