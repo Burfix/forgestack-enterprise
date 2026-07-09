@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic'
 
 import { Suspense } from 'react'
 import { getOrganisationId } from '@/lib/session'
+import Link from 'next/link'
+import { getCurrentRoles } from '@/lib/session'
 import { getVacancies, getCandidatePipeline, getAvgTimeToHireDays } from '@/lib/db/recruitment'
 import { getSites, getDepartments, getEmployeeRoles, getHiringManagers, getContractTypes, getHireTypes } from '@/lib/db/reference-data'
 import { RecruitmentOverview } from '@/features/recruitment/components/recruitment-overview'
@@ -10,6 +12,8 @@ import { VacanciesPanel } from '@/features/recruitment/components/vacancies-pane
 
 async function RecruitmentData() {
   const orgId = await getOrganisationId()
+  const userRoles = await getCurrentRoles()
+  const canImport = userRoles.some((r) => ['super_admin', 'hr_admin'].includes(r))
   const [vacancies, candidates, avgTimeToHireDays, sites, departments, roles, hiringManagers, contractTypes, hireTypes] = await Promise.all([
     getVacancies(orgId),
     getCandidatePipeline(orgId),
@@ -35,6 +39,13 @@ async function RecruitmentData() {
 
   return (
     <div className="space-y-6">
+      {canImport && (
+        <div className="flex justify-end">
+          <Link href="/hr/recruitment/import" className="text-sm text-blue-600 hover:underline">
+            Import historical vacancies from spreadsheet →
+          </Link>
+        </div>
+      )}
       <RecruitmentOverview
         openVacancies={openVacancies}
         candidatesInPipeline={candidates.length}
