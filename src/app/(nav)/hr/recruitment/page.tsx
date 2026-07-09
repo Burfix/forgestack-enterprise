@@ -3,20 +3,23 @@ export const dynamic = 'force-dynamic'
 import { Suspense } from 'react'
 import { getOrganisationId } from '@/lib/session'
 import { getVacancies, getCandidatePipeline, getAvgTimeToHireDays } from '@/lib/db/recruitment'
-import { getSites, getDepartments, getEmployeeRoles } from '@/lib/db/reference-data'
+import { getSites, getDepartments, getEmployeeRoles, getHiringManagers, getContractTypes, getHireTypes } from '@/lib/db/reference-data'
 import { RecruitmentOverview } from '@/features/recruitment/components/recruitment-overview'
 import { PipelineBoard } from '@/features/recruitment/components/pipeline-board'
 import { VacanciesPanel } from '@/features/recruitment/components/vacancies-panel'
 
 async function RecruitmentData() {
   const orgId = await getOrganisationId()
-  const [vacancies, candidates, avgTimeToHireDays, sites, departments, roles] = await Promise.all([
+  const [vacancies, candidates, avgTimeToHireDays, sites, departments, roles, hiringManagers, contractTypes, hireTypes] = await Promise.all([
     getVacancies(orgId),
     getCandidatePipeline(orgId),
     getAvgTimeToHireDays(orgId),
     getSites(orgId),
     getDepartments(orgId),
     getEmployeeRoles(orgId),
+    getHiringManagers(orgId),
+    getContractTypes(orgId),
+    getHireTypes(orgId),
   ])
 
   const openVacancies = vacancies.filter((v) => v.status === 'open').length
@@ -42,7 +45,15 @@ async function RecruitmentData() {
         atRisk={atRisk}
         vacancies={vacancies}
       />
-      <VacanciesPanel vacancies={vacancies} sites={sites} departments={departments} roles={roles} />
+      <VacanciesPanel
+        vacancies={vacancies}
+        sites={sites}
+        departments={departments}
+        roles={roles}
+        hiringManagers={hiringManagers}
+        contractTypes={contractTypes}
+        hireTypes={hireTypes}
+      />
       <PipelineBoard candidates={candidates} />
     </div>
   )
