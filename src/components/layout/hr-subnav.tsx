@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const HR_NAV = [
   { label: 'Overview',           href: '/hr' },
   { label: 'Employee directory', href: '/hr/employees' },
+  { label: 'Recruitment',        href: '/hr/recruitment' },
   { label: 'Workforce readiness',href: '/hr/workforce/readiness' },
   { label: 'Organisation chart', href: '/hr/org-chart' },
   { label: 'Leave calendar',     href: '/hr/leave' },

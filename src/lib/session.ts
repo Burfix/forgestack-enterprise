@@ -58,3 +58,20 @@ export async function getCurrentRoles(): Promise<string[]> {
 
   return (data ?? []).map((r) => r.role)
 }
+
+/** The employees.id linked to the current auth user via profiles, or null if unlinked. */
+export async function getCurrentEmployeeId(): Promise<string | null> {
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('employee_id')
+    .eq('id', user.id)
+    .single()
+
+  return data?.employee_id ?? null
+}
