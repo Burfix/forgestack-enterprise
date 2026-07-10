@@ -12,6 +12,18 @@ export type WorkOrderStatus =
 
 export type WorkOrderPriority = 'P1' | 'P2' | 'P3' | 'P4'
 
+// Derived, not stored — computed from sla_due_at vs now(). 'none' covers
+// closed work orders, where SLA no longer applies.
+export type SlaStatus = 'on_track' | 'at_risk' | 'breached' | 'none'
+
+export function getSlaStatus(slaDueAt: string | null, status: WorkOrderStatus): SlaStatus {
+  if (!slaDueAt || status === 'closed') return 'none'
+  const hoursLeft = (new Date(slaDueAt).getTime() - Date.now()) / (1000 * 60 * 60)
+  if (hoursLeft < 0) return 'breached'
+  if (hoursLeft <= 4) return 'at_risk'
+  return 'on_track'
+}
+
 export interface WorkOrderEmployeeRef {
   id: string
   first_name: string

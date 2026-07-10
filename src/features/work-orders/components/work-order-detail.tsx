@@ -8,7 +8,10 @@ import { getWorkOrderHistory, transitionWorkOrder } from '../actions'
 
 interface Props {
   workOrder: WorkOrderRow
-  onClose: () => void
+  // Omit onClose to render as a standalone page (e.g. /work-orders/[id],
+  // for deep-linking a specific job to a manager over WhatsApp or email).
+  // Pass it to render as an overlay drawer from the list view.
+  onClose?: () => void
 }
 
 const ACTION_LABELS: Partial<Record<WorkOrderStatus, string>> = {
@@ -56,26 +59,29 @@ export function WorkOrderDetail({ workOrder, onClose }: Props) {
         return
       }
       setNotes('')
-      onClose()
+      onClose?.()
     })
   }
 
-  return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/20" onClick={onClose}>
-      <div
-        className="w-full max-w-lg h-full bg-white shadow-xl overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between">
-          <div>
-            <p className="text-xs text-slate-400 mb-1">{workOrder.job_number}</p>
-            <h2 className="text-lg font-semibold text-slate-900">{workOrder.client_name}</h2>
-            <p className="text-sm text-slate-500">{workOrder.site_name}</p>
-          </div>
+  const isDrawer = Boolean(onClose)
+
+  const body = (
+    <div
+      className={isDrawer ? 'w-full max-w-lg h-full bg-white shadow-xl overflow-y-auto' : 'max-w-lg mx-auto bg-white rounded-xl border border-slate-200 my-8'}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between">
+        <div>
+          <p className="text-xs text-slate-400 mb-1">{workOrder.job_number}</p>
+          <h2 className="text-lg font-semibold text-slate-900">{workOrder.client_name}</h2>
+          <p className="text-sm text-slate-500">{workOrder.site_name}</p>
+        </div>
+        {isDrawer && (
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">
             &times;
           </button>
-        </div>
+        )}
+      </div>
 
         <div className="px-6 py-4 space-y-4">
           <div className="flex items-center gap-2">
@@ -215,6 +221,15 @@ export function WorkOrderDetail({ workOrder, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
   )
+
+  if (isDrawer) {
+    return (
+      <div className="fixed inset-0 z-40 flex justify-end bg-black/20" onClick={onClose}>
+        {body}
+      </div>
+    )
+  }
+
+  return <div className="min-h-full bg-slate-50 px-8">{body}</div>
 }
