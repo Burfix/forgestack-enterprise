@@ -1,40 +1,71 @@
 export const dynamic = 'force-dynamic'
 
+import { Suspense } from 'react'
 import { getOrganisationId } from '@/lib/session'
-import { getWorkOrders, computeSlaStatus } from '@/lib/db/work-orders'
-import { WorkOrdersTable } from '@/features/work-orders/components/work-orders-table'
+import { getWorkOrders } from '@/lib/db/work-orders'
+import { WorkOrdersBoard } from '@/features/work-orders/components/work-orders-board'
 
-export default async function WorkOrdersPage() {
+async function WorkOrdersData() {
   const orgId = await getOrganisationId()
   const workOrders = await getWorkOrders(orgId)
 
-  const now = new Date()
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const openCount = workOrders.filter((w) => w.status !== 'closed').length
 
-  const enriched = workOrders.map((wo) => ({
-    ...wo,
-    slaStatus: computeSlaStatus(wo.sla_due_at, wo.status),
-  }))
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const emergencyCount = workOrders.filter(
+    (w) => (w.priority === 'P1' || w.priority === 'P2') && new Date(w.created_at).getTime() >= sevenDaysAgo
+  ).length
 
-  const OPEN_STATUSES = ['received', 'dispatched', 'on_site', 'completed_awaiting_approval', 'manager_approved', 'sent_to_accounts']
+  const closedThisMonth = workOrders.filter((w) => {
+    if (w.status !== 'closed') return false
+    const closedAt = new Date(w.updated_at)
+    const now = new Date()
+    return closedAt.getMonth() === now.getMonth() && closedAt.getFullYear() === now.getFullYear()
+  })
+  const avgResolutionHours =
+    closedThisMonth.length > 0
+      ? Math.round(
+          closedThisMonth.reduce((sum, w) => {
+            const hours = (new Date(w.updated_at).getTime() - new Date(w.created_at).getTime()) / (1000 * 60 * 60)
+            return sum + hours
+          }, 0) / closedThisMonth.length
+        )
+      : null
 
-  const kpi = {
-    open: enriched.filter((wo) => OPEN_STATUSES.includes(wo.status)).length,
-    pendingApproval: enriched.filter((wo) => wo.status === 'completed_awaiting_approval').length,
-    pendingInvoice: enriched.filter((wo) => wo.status === 'sent_to_accounts').length,
-    completedThisMonth: enriched.filter(
-      (wo) => (wo.status === 'invoiced' || wo.status === 'closed') &&
-        new Date(wo.updated_at) >= startOfMonth
-    ).length,
-  }
+  const billableHoursAwaitingInvoice = workOrders.filter(
+    (w) => w.status === 'manager_approved' || w.status === 'sent_to_accounts'
+  ).length
 
   return (
-    <div className="min-h-full bg-slate-50 pb-10">
-      <div className="bg-white border-b border-slate-200 px-8 py-5">
-        <h1 className="text-xl font-medium text-slate-900">Work orders</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Technisoft Service Manager → ForgeStack approval → ERP invoicing</p>
+    <WorkOrdersBoard
+      workOrders={workOrders}
+      openCount={openCount}
+      avgResolutionHours={avgResolutionHours}
+      emergencyCount={emergencyCount}
+      billableHoursAwaitingInvoice={billableHoursAwaitingInvoice}
+    />
+  )
+}
+
+function WorkOrdersSkeleton() {
+  return (
+    <div className="px-8 py-6 space-y-6 animate-pulse">
+      <div className="grid grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-slate-200 h-28" />
+        ))}
       </div>
-      <WorkOrdersTable workOrders={enriched} kpi={kpi} />
+      <div className="bg-white rounded-xl border border-slate-200 h-96" />
+    </div>
+  )
+}
+
+export default function WorkOrdersPage() {
+  return (
+    <div className="min-h-full bg-slate-50">
+      <Suspense fallback={<WorkOrdersSkeleton />}>
+        <WorkOrdersData />
+      </Suspense>
     </div>
   )
 }

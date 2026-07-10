@@ -1,219 +1,218 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { ChevronLeft, Download, RefreshCw, CheckCircle2, Image as ImageIcon } from 'lucide-react'
-import Link from 'next/link'
-import { format } from 'date-fns'
-import { EmployeeAvatar } from '@/features/employees/components/employee-avatar'
-import { WoStatusBadge } from './wo-status-badge'
-import { WorkflowStepper } from './workflow-stepper'
-import { SlaIndicator } from './sla-indicator'
-import { computeSlaStatus } from '@/lib/db/work-orders'
-import type { WorkOrder, WorkOrderStatus } from '@/types/work-orders'
+import { useEffect, useState, useTransition } from 'react'
+import type { WorkOrderEvent, WorkOrderRow, WorkOrderStatus } from '@/types/work-orders'
+import { WORK_ORDER_NEXT_STATUSES, WORK_ORDER_STATUS_LABELS } from '@/types/work-orders'
+import { WorkOrderStatusBadge, WorkOrderPriorityBadge } from './badges'
+import { getWorkOrderHistory, transitionWorkOrder } from '../actions'
 
-interface WorkOrderDetailProps {
-  workOrder: WorkOrder
+interface Props {
+  workOrder: WorkOrderRow
+  onClose: () => void
 }
 
-export function WorkOrderDetail({ workOrder }: WorkOrderDetailProps) {
-  const router = useRouter()
-  const [status, setStatus] = useState<WorkOrderStatus>(workOrder.status)
-  const [approvedAt, setApprovedAt] = useState<string | null>(workOrder.manager_approved_at)
+const ACTION_LABELS: Partial<Record<WorkOrderStatus, string>> = {
+  dispatched: 'Dispatch',
+  on_site: 'Mark on site',
+  completed_awaiting_approval: 'Mark completed',
+  quote_pending: 'Requires a quote',
+  awaiting_po: 'Quote sent to client',
+  manager_approved: 'Approve',
+  sent_to_accounts: 'Send to accounts',
+  invoiced: 'Post invoice',
+  closed: 'Close work order',
+}
 
-  function handleStatusChange(newStatus: WorkOrderStatus, newApprovedAt: string) {
-    setStatus(newStatus)
-    setApprovedAt(newApprovedAt)
-    // Invalidate server cache after local state has updated
-    router.refresh()
+export function WorkOrderDetail({ workOrder, onClose }: Props) {
+  const [history, setHistory] = useState<WorkOrderEvent[]>([])
+  const [notes, setNotes] = useState('')
+  const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [invoiceAmount, setInvoiceAmount] = useState('')
+  const [poNumber, setPoNumber] = useState('')
+  const [quoteAmount, setQuoteAmount] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  useEffect(() => {
+    getWorkOrderHistory(workOrder.id).then(setHistory)
+  }, [workOrder.id])
+
+  const nextStatuses = WORK_ORDER_NEXT_STATUSES[workOrder.status]
+
+  function handleTransition(newStatus: WorkOrderStatus) {
+    setError(null)
+    startTransition(async () => {
+      const result = await transitionWorkOrder({
+        workOrderId: workOrder.id,
+        newStatus,
+        notes: notes.trim() || undefined,
+        invoiceNumber: newStatus === 'invoiced' ? invoiceNumber.trim() || undefined : undefined,
+        invoiceAmount: newStatus === 'invoiced' && invoiceAmount ? Number(invoiceAmount) : undefined,
+        poNumber: newStatus === 'dispatched' && workOrder.status === 'awaiting_po' ? poNumber.trim() || undefined : undefined,
+        quoteAmount: newStatus === 'quote_pending' && quoteAmount ? Number(quoteAmount) : undefined,
+      })
+      if (!result.ok) {
+        setError(result.message ?? 'Something went wrong.')
+        return
+      }
+      setNotes('')
+      onClose()
+    })
   }
 
-  const slaStatus = computeSlaStatus(workOrder.sla_due_at, status)
-  const syncTime = workOrder.technisoft_last_sync
-    ? format(new Date(workOrder.technisoft_last_sync), 'HH:mm dd MMM')
-    : null
-
   return (
-    <div className="min-h-full bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="px-8 pt-4 pb-0">
-          <Link
-            href="/work-orders"
-            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Work orders
-          </Link>
-        </div>
-        <div className="px-8 pb-5 flex items-start justify-between gap-6">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              <span className="font-mono text-sm font-semibold text-[#1A3A5C]">{workOrder.job_number}</span>
-              <WoStatusBadge status={status} size="lg" />
-              <SlaIndicator status={slaStatus} />
-            </div>
-            <h1 className="text-xl font-medium text-slate-900 mb-2">{workOrder.fault_description}</h1>
-            <div className="flex items-center gap-4 text-sm text-slate-500">
-              <span>{workOrder.client_name}</span>
-              <span className="text-slate-300">·</span>
-              <span>{workOrder.site_name}</span>
-              <span className="text-slate-300">·</span>
-              <span>Created {format(new Date(workOrder.created_at), 'dd MMM yyyy')}</span>
-              {workOrder.sla_due_at && (
-                <>
-                  <span className="text-slate-300">·</span>
-                  <span>SLA due {format(new Date(workOrder.sla_due_at), 'dd MMM yyyy HH:mm')}</span>
-                </>
-              )}
-            </div>
+    <div className="fixed inset-0 z-40 flex justify-end bg-black/20" onClick={onClose}>
+      <div
+        className="w-full max-w-lg h-full bg-white shadow-xl overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between">
+          <div>
+            <p className="text-xs text-slate-400 mb-1">{workOrder.job_number}</p>
+            <h2 className="text-lg font-semibold text-slate-900">{workOrder.client_name}</h2>
+            <p className="text-sm text-slate-500">{workOrder.site_name}</p>
           </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">
+            &times;
+          </button>
+        </div>
+
+        <div className="px-6 py-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <WorkOrderStatusBadge status={workOrder.status} />
+            <WorkOrderPriorityBadge priority={workOrder.priority} />
+          </div>
+
+          <div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Fault / job description</p>
+            <p className="text-sm text-slate-700">{workOrder.fault_description}</p>
+            {workOrder.asset_description && (
+              <p className="text-xs text-slate-400 mt-1">Asset: {workOrder.asset_description}</p>
+            )}
+          </div>
+
           {workOrder.technician && (
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <EmployeeAvatar
-                firstName={workOrder.technician.first_name}
-                lastName={workOrder.technician.last_name}
-                photoUrl={workOrder.technician.photo_url}
-                size="sm"
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Technician</p>
+              <p className="text-sm text-slate-700">
+                {workOrder.technician.first_name} {workOrder.technician.last_name}
+              </p>
+            </div>
+          )}
+
+          {workOrder.requires_quote && (
+            <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-800 space-y-1">
+              <p className="font-medium">Quote / PO branch</p>
+              {workOrder.quote_amount && <p>Quote amount: R{workOrder.quote_amount.toLocaleString()}</p>}
+              {workOrder.po_number && <p>Client PO: {workOrder.po_number}</p>}
+            </div>
+          )}
+
+          {workOrder.manager_approval_notes && (
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Manager notes</p>
+              <p className="text-sm text-slate-700">{workOrder.manager_approval_notes}</p>
+            </div>
+          )}
+
+          {workOrder.invoice_number && (
+            <div>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Invoice</p>
+              <p className="text-sm text-slate-700">
+                {workOrder.invoice_number} &middot; R{workOrder.invoice_amount?.toLocaleString()}
+              </p>
+            </div>
+          )}
+
+          {/* Action panel */}
+          {nextStatuses.length > 0 && (
+            <div className="border-t border-slate-100 pt-4 space-y-3">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Next step</p>
+
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+              )}
+
+              {nextStatuses.includes('invoiced') && (
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    placeholder="Invoice number"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
+                  />
+                  <input
+                    placeholder="Amount (R)"
+                    value={invoiceAmount}
+                    onChange={(e) => setInvoiceAmount(e.target.value)}
+                    className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
+                  />
+                </div>
+              )}
+
+              {workOrder.status === 'awaiting_po' && (
+                <input
+                  placeholder="Client PO number"
+                  value={poNumber}
+                  onChange={(e) => setPoNumber(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
+                />
+              )}
+
+              {nextStatuses.includes('quote_pending') && (
+                <input
+                  placeholder="Estimated quote amount (R, optional)"
+                  value={quoteAmount}
+                  onChange={(e) => setQuoteAmount(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
+                />
+              )}
+
+              <textarea
+                placeholder="Notes (optional)"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm"
               />
-              <div>
-                <p className="text-sm font-medium text-slate-900">
-                  {workOrder.technician.first_name} {workOrder.technician.last_name}
-                </p>
-                <p className="text-xs text-slate-400">Assigned technician</p>
+
+              <div className="flex flex-wrap gap-2">
+                {nextStatuses.map((status) => (
+                  <button
+                    key={status}
+                    disabled={pending}
+                    onClick={() => handleTransition(status)}
+                    className={`text-sm font-medium rounded-lg px-3 py-1.5 disabled:opacity-50 ${
+                      status === 'dispatched' && workOrder.status === 'completed_awaiting_approval'
+                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        : 'bg-[#1A3A5C] text-white hover:bg-[#15304c]'
+                    }`}
+                  >
+                    {status === 'dispatched' && workOrder.status === 'completed_awaiting_approval'
+                      ? 'Send back to technician'
+                      : ACTION_LABELS[status] ?? WORK_ORDER_STATUS_LABELS[status]}
+                  </button>
+                ))}
               </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Body — 2/3 + 1/3 layout */}
-      <div className="px-8 py-6 grid grid-cols-3 gap-6">
-        {/* Left: job details */}
-        <div className="col-span-2 space-y-5">
-
-          {/* Job details card */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h2 className="text-sm font-semibold text-slate-900 mb-4">Job details</h2>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm mb-5">
-              {[
-                { label: 'Client',      value: workOrder.client_name },
-                { label: 'Site',        value: workOrder.site_name },
-                { label: 'Asset',       value: workOrder.asset_description ?? '—' },
-                { label: 'Technisoft ID', value: workOrder.technisoft_job_id ?? '—' },
-                { label: 'Invoice #',   value: workOrder.invoice_number ?? '—' },
-                { label: 'Invoice amount', value: workOrder.invoice_amount != null
-                  ? `R ${workOrder.invoice_amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`
-                  : '—' },
-              ].map(({ label, value }) => (
-                <div key={label}>
-                  <p className="text-xs text-slate-400 mb-0.5">{label}</p>
-                  <p className="text-slate-700 font-mono text-xs">{value}</p>
+          {/* History */}
+          <div className="border-t border-slate-100 pt-4">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">History</p>
+            <div className="space-y-2">
+              {history.map((event) => (
+                <div key={event.id} className="text-xs text-slate-500 flex justify-between gap-2">
+                  <span>
+                    {event.from_status ? `${WORK_ORDER_STATUS_LABELS[event.from_status]} \u2192 ` : ''}
+                    <span className="font-medium text-slate-700">{WORK_ORDER_STATUS_LABELS[event.to_status]}</span>
+                    {event.actor && ` \u00b7 ${event.actor.first_name} ${event.actor.last_name}`}
+                  </span>
+                  <span className="whitespace-nowrap">{new Date(event.created_at).toLocaleString('en-ZA')}</span>
                 </div>
               ))}
             </div>
-            <div>
-              <p className="text-xs text-slate-400 mb-1">Fault description</p>
-              <p className="text-sm text-slate-700">{workOrder.fault_description}</p>
-            </div>
-            {workOrder.technician_notes && (
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <p className="text-xs text-slate-400 mb-1">Technician notes</p>
-                <p className="text-sm text-slate-700 leading-relaxed">{workOrder.technician_notes}</p>
-              </div>
-            )}
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <p className="text-xs text-slate-400 mb-1">Parts used</p>
-              <p className="text-sm text-slate-400 italic">Parts list will be populated from Technisoft job card.</p>
-            </div>
           </div>
-
-          {/* Job card document */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-900">Job card</h2>
-              <button
-                disabled
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-100 rounded-md px-3 py-1.5 cursor-not-allowed"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Download PDF
-              </button>
-            </div>
-            <div className="bg-slate-50 border border-slate-200 border-dashed rounded-lg h-40 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-10 h-10 bg-slate-200 rounded-lg mx-auto mb-2 flex items-center justify-center">
-                  <span className="text-slate-400 text-xs font-bold">PDF</span>
-                </div>
-                <p className="text-xs text-slate-400">Job card document — synced from Technisoft</p>
-                <p className="text-xs text-slate-300 mt-0.5">{workOrder.job_number}.pdf</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Signature + photos row */}
-          <div className="grid grid-cols-2 gap-5">
-            {/* Client signature */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h2 className="text-sm font-semibold text-slate-900 mb-3">Client signature</h2>
-              {workOrder.client_signature_captured ? (
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm text-slate-700 font-medium">Signature captured</p>
-                    {workOrder.client_signature_at && (
-                      <p className="text-xs text-slate-400">
-                        {format(new Date(workOrder.client_signature_at), 'dd MMM yyyy HH:mm')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-400 italic">Awaiting client signature on PDA.</p>
-              )}
-            </div>
-
-            {/* Photos */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h2 className="text-sm font-semibold text-slate-900 mb-3">Evidence photos</h2>
-              <div className="grid grid-cols-3 gap-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="aspect-square bg-slate-100 rounded-lg border border-slate-200 border-dashed flex items-center justify-center"
-                  >
-                    <ImageIcon className="w-4 h-4 text-slate-300" />
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-slate-400 mt-2">Photos attached via PDA — sync pending.</p>
-            </div>
-          </div>
-
-          {/* Technisoft sync status */}
-          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-slate-200">
-            <RefreshCw className="w-4 h-4 text-slate-400 flex-shrink-0" />
-            <div className="flex-1">
-              <span className="text-xs text-slate-500">Technisoft Service Manager</span>
-              {syncTime && (
-                <span className="ml-2 text-xs text-slate-400">Last sync: {syncTime}</span>
-              )}
-            </div>
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 rounded-full px-2.5 py-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-              Connected
-            </span>
-          </div>
-        </div>
-
-        {/* Right: workflow stepper */}
-        <div className="col-span-1">
-          <WorkflowStepper
-            workOrderId={workOrder.id}
-            initialStatus={status}
-            initialApprovedAt={approvedAt}
-            onStatusChange={handleStatusChange}
-          />
         </div>
       </div>
     </div>
