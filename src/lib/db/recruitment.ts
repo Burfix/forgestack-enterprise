@@ -47,33 +47,43 @@ export async function getSlaRules(organisationId: string): Promise<RecruitmentSl
   return data ?? []
 }
 
-export async function getCandidatePipeline(organisationId: string): Promise<CandidatePipelineRow[]> {
+// Shared by getCandidatePipeline (Kanban board — active candidates only) and
+// getCandidateListView (List view — every candidate regardless of outcome).
+// One query, one mapping function: the Kanban board and the list view must
+// never be able to disagree about what risk or days-in-stage means for the
+// same candidate.
+async function fetchCandidateRows(
+  organisationId: string,
+  { activeOnly }: { activeOnly: boolean }
+): Promise<CandidatePipelineRow[]> {
   const supabase = await createServerSupabaseClient()
 
-  const [{ data, error }, rules] = await Promise.all([
-    supabase
-      .from('candidates')
-      .select(`
-        id, first_name, surname, status, created_at,
-        vacancy:vacancy_id(
-          id, position_title,
-          site:site_id(id, name),
-          department:department_id(id, name),
-          role:role_id(id, title, level)
-        ),
-        recruitment_workflows(
-          id, stage, started_at, sla_due_date, status,
-          owner:owner_id(id, first_name, last_name)
-        )
-      `)
-      .eq('organisation_id', organisationId)
-      .is('deleted_at', null)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false }),
-    getSlaRules(organisationId),
-  ])
+  let query = supabase
+    .from('candidates')
+    .select(`
+      id, first_name, surname, status, created_at,
+      vacancy:vacancy_id(
+        id, position_title,
+        site:site_id(id, name),
+        department:department_id(id, name),
+        role:role_id(id, title, level)
+      ),
+      recruitment_workflows(
+        id, stage, started_at, sla_due_date, status,
+        owner:owner_id(id, first_name, last_name)
+      )
+    `)
+    .eq('organisation_id', organisationId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
 
-  if (error) throw new Error(`Failed to load candidate pipeline: ${error.message}`)
+  if (activeOnly) {
+    query = query.eq('status', 'active')
+  }
+
+  const [{ data, error }, rules] = await Promise.all([query, getSlaRules(organisationId)])
+
+  if (error) throw new Error(`Failed to load candidates: ${error.message}`)
 
   return (data ?? []).map((raw) => {
     const vacancy = one(raw.vacancy)
@@ -113,6 +123,15 @@ export async function getCandidatePipeline(organisationId: string): Promise<Cand
       daysInStage,
     }
   })
+}
+
+export async function getCandidatePipeline(organisationId: string): Promise<CandidatePipelineRow[]> {
+  return fetchCandidateRows(organisationId, { activeOnly: true })
+}
+
+/** Every candidate regardless of outcome — powers the List View's summary tiles and table. */
+export async function getCandidateListView(organisationId: string): Promise<CandidatePipelineRow[]> {
+  return fetchCandidateRows(organisationId, { activeOnly: false })
 }
 
 function computeRisk(

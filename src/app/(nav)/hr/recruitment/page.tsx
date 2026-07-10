@@ -4,19 +4,20 @@ import { Suspense } from 'react'
 import { getOrganisationId } from '@/lib/session'
 import Link from 'next/link'
 import { getCurrentRoles } from '@/lib/session'
-import { getVacancies, getCandidatePipeline, getAvgTimeToHireDays } from '@/lib/db/recruitment'
+import { getVacancies, getCandidatePipeline, getCandidateListView, getAvgTimeToHireDays } from '@/lib/db/recruitment'
 import { getSites, getDepartments, getEmployeeRoles, getHiringManagers, getContractTypes, getHireTypes } from '@/lib/db/reference-data'
 import { RecruitmentOverview } from '@/features/recruitment/components/recruitment-overview'
-import { PipelineBoard } from '@/features/recruitment/components/pipeline-board'
+import { PipelineView } from '@/features/recruitment/components/pipeline-view'
 import { VacanciesPanel } from '@/features/recruitment/components/vacancies-panel'
 
 async function RecruitmentData() {
   const orgId = await getOrganisationId()
   const userRoles = await getCurrentRoles()
   const canImport = userRoles.some((r) => ['super_admin', 'hr_admin'].includes(r))
-  const [vacancies, candidates, avgTimeToHireDays, sites, departments, roles, hiringManagers, contractTypes, hireTypes] = await Promise.all([
+  const [vacancies, candidates, allCandidates, avgTimeToHireDays, sites, departments, roles, hiringManagers, contractTypes, hireTypes] = await Promise.all([
     getVacancies(orgId),
     getCandidatePipeline(orgId),
+    getCandidateListView(orgId),
     getAvgTimeToHireDays(orgId),
     getSites(orgId),
     getDepartments(orgId),
@@ -65,7 +66,7 @@ async function RecruitmentData() {
         contractTypes={contractTypes}
         hireTypes={hireTypes}
       />
-      <PipelineBoard candidates={candidates} hiringManagers={hiringManagers} />
+      <PipelineView activeCandidates={candidates} allCandidates={allCandidates} hiringManagers={hiringManagers} sites={sites} />
     </div>
   )
 }
