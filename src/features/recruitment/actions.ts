@@ -46,7 +46,7 @@ export async function transitionCandidateStage(
     return { ok: false, message: error.message }
   }
 
-  revalidatePath('/hr/recruitment')
+  revalidatePath('/hr/recruitment/pipeline')
   return { ok: true }
 }
 
@@ -101,7 +101,7 @@ export async function createVacancy(input: CreateVacancyInput): Promise<Transiti
     return { ok: false, message: error.message }
   }
 
-  revalidatePath('/hr/recruitment')
+  revalidatePath('/hr/recruitment/pipeline')
   return { ok: true }
 }
 
@@ -131,7 +131,7 @@ export async function createCandidate(input: CreateCandidateInput): Promise<Tran
     return { ok: false, message: error.message }
   }
 
-  revalidatePath('/hr/recruitment')
+  revalidatePath('/hr/recruitment/pipeline')
   return { ok: true }
 }
 
@@ -171,7 +171,7 @@ export async function updateWorkflowStageDetails(input: UpdateStageDetailsInput)
 
   if (error) return { ok: false, message: error.message }
 
-  revalidatePath('/hr/recruitment')
+  revalidatePath('/hr/recruitment/pipeline')
   return { ok: true }
 }
 
@@ -185,7 +185,7 @@ export async function completeRecruitmentTask(taskId: string, completed: boolean
 
   if (error) return { ok: false, message: error.message }
 
-  revalidatePath('/hr/recruitment')
+  revalidatePath('/hr/recruitment/pipeline')
   return { ok: true }
 }
 
@@ -199,7 +199,7 @@ export async function markCandidateDocument(documentId: string, uploaded: boolea
 
   if (error) return { ok: false, message: error.message }
 
-  revalidatePath('/hr/recruitment')
+  revalidatePath('/hr/recruitment/pipeline')
   return { ok: true }
 }
 
