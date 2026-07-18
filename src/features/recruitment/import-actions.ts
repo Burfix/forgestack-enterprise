@@ -182,7 +182,7 @@ export async function commitImportRow(rowId: string): Promise<ActionResult> {
   if (error) return { ok: false, message: error.message }
 
   revalidatePath('/hr/recruitment/import')
-  revalidatePath('/hr/recruitment')
+  revalidatePath('/hr/recruitment/pipeline')
   return { ok: true }
 }
 
@@ -215,7 +215,7 @@ export async function commitAllMatchedRows(batchId: string): Promise<ActionResul
     .eq('id', batchId)
 
   revalidatePath('/hr/recruitment/import')
-  revalidatePath('/hr/recruitment')
+  revalidatePath('/hr/recruitment/pipeline')
 
   if (failures.length > 0) {
     return { ok: false, message: `Committed ${rows.length - failures.length} of ${rows.length} rows. Some failed: ${failures[0]}` }
